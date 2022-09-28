@@ -16,3 +16,9 @@
   HTML]].
 * Cours 1 <2022-09-27>
   On lit le syllabus, les notes jusqu'à la page 10.
+
+  Le site d'Heptagon n'est plus disponible, mais le manuel peut être trouvé sur
+  le dépôt du compilateur. On peut cliquer sur le bouton /download/ pour
+  télécharger une copie PDF.
+
+  https://gitlab.inria.fr/synchrone/heptagon/-/blob/ec26be27b91f3e601b98b8b7e15e8d56d4b9afc7/manual/heptagon-manual.pdf
