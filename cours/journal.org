@@ -22,3 +22,7 @@
   télécharger une copie PDF.
 
   https://gitlab.inria.fr/synchrone/heptagon/-/blob/ec26be27b91f3e601b98b8b7e15e8d56d4b9afc7/manual/heptagon-manual.pdf
+* Cours 2 <2022-10-04>
+  On lit les notes jusqu'à la page 16.
+* Cours 3 <2022-10-11>
+  On lit les notes jusqu'à la page 23.
