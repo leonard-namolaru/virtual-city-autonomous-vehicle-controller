@@ -4,6 +4,14 @@ open Globals
 node controller(sens : sensors; iti : itielts)
        returns (rspeed : wheels; arriving : bool)
 let
-  rspeed = { left = 0.0; right = 0.0 };
+  (* rspeed = { left = 0.0; right = 0.0 }; *)
   arriving = false;
+
+  () = dbg_sensors("sensors : ", sens) ;
+
+  if sens.s_road.green > 0
+   then  rspeed = { left = 150.0; right = 100.0 }; 
+  else   rspeed = { left = 100.0; right = 100.0 };
+  end;
+
 tel

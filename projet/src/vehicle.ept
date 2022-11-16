@@ -12,7 +12,7 @@ let
                                               vec)));
 tel
 
-node driver(top : bool; sens : sensors; itr : interrupt; iti : itielts)
+node driver(top : bool; sens : sensors; itr : interrupt; iti : itielts) (* Interruption en cas de sortie de route *)
    returns (rspeed : wheels; sta : status)
 let
   automaton
@@ -23,16 +23,16 @@ let
 
     state Running
       var arriving : bool;
-      do (rspeed, arriving) = Control.controller(sens, iti);
+      do (rspeed, arriving) = Control.controller(sens, iti); (* iti : Itineraire *)
          sta = Running
       until arriving then Arrived | itr = Halt then Stopped
 
     state Arrived
-      do rspeed = idlew;
+      do rspeed = idlew; (* Etat final *)
          sta = Arrived
 
     state Stopped
-      do rspeed = idlew;
+      do rspeed = idlew; (* Etat final *)
          sta = Stopped
   end
 tel
@@ -44,6 +44,7 @@ node physical_model(top : bool; rspeed : wheels; ini_ph : phase)
 var last alpha0 : float; last x0 : float; last y0 : float;
 let
   automaton
+    (* Positionnement *)
     state Positioning
       var dummy : phase; pos : position;
       do (pos, dummy) = car_geometry(ini_ph, [ -. cDELTA, 0.0]);
@@ -53,6 +54,7 @@ let
          ph = { ini_ph with .ph_vel = 0.0 };
       until top then On
 
+    (* La simulation est lancee *)
     state On
       var si, co, alpha, vL, vR, v : float; dummy : position;
       do si = Mathext.sin((alpha *. pi) /. 180.0);
@@ -67,7 +69,7 @@ let
                 alpha0));
          (dummy, ph) = car_geometry({
                             ph_pos = {
-                              x = Utilities.integrator(v *. co, timestep, x0);
+                              x = Utilities.integrator(v *. co, timestep, x0); (* La position x c'est la vitesse v fois un coefficient de correction ... (a completer) *)
                               y = Utilities.integrator(v *. si, timestep, y0)
                             };
                             ph_vel = v;
@@ -76,6 +78,7 @@ let
   end
 tel
 
+(* Calcule de la phase en fonction de la situation precedente et la phase initial *)
 node simulate(iti : itielts; sens : sensors;
               itr : interrupt; ini_ph : phase;
               top : bool)
@@ -83,5 +86,5 @@ node simulate(iti : itielts; sens : sensors;
 var rspeed : wheels;
 let
   (rspeed, sta) = driver(top, sens, itr, iti);
-  ph = physical_model(top, rspeed, ini_ph);
+  ph = physical_model(top, rspeed, ini_ph); (* rspeed : la vitesse des roues *)
 tel

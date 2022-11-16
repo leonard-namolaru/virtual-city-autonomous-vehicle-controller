@@ -90,11 +90,11 @@ tel
 node event_detection(sign : sign; ph : phase)
             returns (itr : interrupt; evts : event)
 let
-  (evts, itr) = aggregate_events (light(sign.si_tlights, ph),
-                                  speed(ph),
-                                  exited(ph),
-                                  collision(ph, sign.si_obstacles),
-                                  wrong_dir(ph));
+  (evts, itr) = aggregate_events (light(sign.si_tlights, ph),(* Griller un feu *)
+                                  speed(ph),  (* Exces de vitesse *)
+                                  exited(ph), (* Sortir de la route *)
+                                  collision(ph, sign.si_obstacles), (* Obstacle *)
+                                  wrong_dir(ph)); (* Mauvaise direction *)
 tel
 
 (* Sensor aggregation *)
@@ -118,10 +118,11 @@ fun obstacles_detection_aux(ph : phase; obst : obstacle; acc : int)
                    returns (accnew : int)
 var a, d, d1 : float; sonar : int;
 let
-  (a, d) = Utilities.angle_dist(ph.ph_pos, obst.o_pos);
+  (a, d) = Utilities.angle_dist(ph.ph_pos, obst.o_pos); (* Distance angulaire *)
   d1 = d -. cROBST;
   sonar = if Utilities.abs(Utilities.normalize(ph.ph_head -. a)) <=. 30.0
               and d1 <=. 100.0 and obst.o_pres
+              (* obst.o_pres : L'obstacle est-il present maintenant ? *)
           then Mathext.int(d1)
           else cSONARFAR;
   accnew = Utilities.min_int(sonar, acc);
@@ -191,10 +192,10 @@ tel
 node scoringA(e : event; rstatus : status) returns (score : int)
 var penalty : int; collision_count : int;
 let
-  score = (10000 fby score)
+  score = (10000 fby score) (* Le score commence a 1000 *)
           + if Utilities.rising_edge(rstatus = Arrived) then 1000 else 0
           + if rstatus = Running then penalty else 0;
-  penalty = (if Utilities.rising_edge(e.lightRun) then -500 else 0)
+  penalty = (if Utilities.rising_edge(e.lightRun) then -500 else 0) (* Pour avoir grille un feu rouge : un malus chaque fois que lightRun passe de faux a vrai *)
             + (if Utilities.rising_edge(e.speedExcess) then -100 else 0)
             + (if e.speedExcess then -2 else 0)
             + (if Utilities.rising_edge(e.exitRoad) then -5000 else 0)

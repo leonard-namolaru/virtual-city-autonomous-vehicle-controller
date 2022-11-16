@@ -7,7 +7,7 @@ var itr : interrupt; ini_sens, sens : sensors;
 let
   ini_sens = { s_road = { red = 128; green = 128; blue = 128 };
                s_front = { red = 128; green = 128; blue = 128 };
-               s_sonar = cSONARFAR };
+               s_sonar = cSONARFAR }; (* Il n'y a pas d'obstacles *)
   (ph, sta) = Vehicle.simulate(Map.read_itinerary(),
                                ini_sens fby sens,
                                Ok fby itr,
@@ -16,6 +16,6 @@ let
   (sign, itr, sens, evt) = City.simulate(ph, time);
   () = Map.soundEffects(Utilities.event_edge(evt), sta);
   scoreA = City.scoringA(evt, sta);
-  time = City.wallclock(sta);
+  time = City.wallclock(sta); (* Calcul du temps *)
   scoreB = City.scoringB(ph);
 tel
