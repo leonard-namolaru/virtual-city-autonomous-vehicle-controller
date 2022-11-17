@@ -16,17 +16,21 @@ tel
 node controller(sens : sensors; iti : itielts)
        returns (rspeed : wheels; arriving : bool)
 var i : int;
-    actual_speed, reduced_speed : float;
-let
-  (* rspeed = { left = 100.0; right = 100.0 }; *)
+    actual_speed, reduced_speed, pre_actual_speed : float;
+let  
+  pre_actual_speed = 0.0 fby actual_speed;
   arriving = (iti[>i<]).act = Stop;
-  i = if sens.s_road.green = 255 and sens.s_road.blue = 0 then (0 fby i + 1) else (0 fby i);
+  
+  i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) then (0 fby i + 1) else (0 fby i);
+
   () = dbg_sensors("sensors : ", sens) ;
   () = dbg_itielt("iti : ", iti[>i<]) ;
-
-  actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 10.0 else 0.0;
-  reduced_speed = actual_speed -. actual_speed *. 0.5;
+  () = dbg_wheels("wheels", rspeed);
   
-  rspeed = if sens.s_road.green > 0 then  { left = actual_speed; right = reduced_speed} else if sens.s_road.red > 0  then  { left = reduced_speed; right = actual_speed } else { left = actual_speed; right = actual_speed };
-
+  switch (iti[>i<]).act
+  | Go do actual_speed = (iti[>i<]).param *. 360.0 *. cD /. 100.0 ; reduced_speed = actual_speed -. actual_speed *. 0.1;
+  | Turn do actual_speed = pre_actual_speed; reduced_speed = 0.0;
+  | Stop do actual_speed = 0.0; reduced_speed = 0.0;
+  end;
+  rspeed = if sens.s_road.green > 0 then  { left = actual_speed; right = reduced_speed} else if sens.s_road.red > 0 or (iti[>i<]).act = Turn  then  { left = reduced_speed; right = actual_speed } else { left = actual_speed; right = actual_speed };
 tel
