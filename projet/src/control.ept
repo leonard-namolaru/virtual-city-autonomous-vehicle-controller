@@ -13,10 +13,21 @@ let
     w3 = Debug.d_string(w2, "\n");
 tel
 
+node pow2(num : int) returns (result : int)
+let
+  result = num * num;
+tel
+
+(* Source : https://observablehq.com/@luciyer/euclidian-distance-in-rgb-color-space *)
+node euclidian_distance_rgb_color(color1, color2 : color) returns (d : float)
+let
+  d = Mathext.sqrt( Mathext.float(pow2(color2.green - color1.green)) +. Mathext.float(pow2(color2.red - color1.red)) +. Mathext.float(pow2(color2.blue - color1.blue)) )
+tel
+
 node controller(sens : sensors; iti : itielts)
        returns (rspeed : wheels; arriving : bool)
 var i : int;
-    actual_speed, in_red, in_green : float;
+    actual_speed, in_red, in_green, error : float;
 let  
   arriving = (iti[>i<]).act = Stop;
   
@@ -29,11 +40,15 @@ let
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
 
+  error = (255.0 -. euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sens.s_road)) /. 255.0;
+  () = Debug.dbg_float("error = ", error);
+  
+
   actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 10.0 else (0.0 fby actual_speed);
 
   switch (iti[>i<]).act
   | Go do rspeed = { left = actual_speed -. actual_speed *. in_red; right = actual_speed -. actual_speed *. in_green};
   | Turn do rspeed =   { left = actual_speed; right = actual_speed -. actual_speed *. in_red};
   | Stop do rspeed = { left = 0.0; right = 0.0};
-  end; 
+  end;
 tel
