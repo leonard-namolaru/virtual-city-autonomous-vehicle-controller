@@ -1,5 +1,7 @@
 open Globals
 
+const dt : float = 0.01
+
 fun dbg_itielt(msg : string; iti : itielt) returns ()
 var w0, w1, w2, w3 : Debug.world;
 let
@@ -18,6 +20,11 @@ let
   result = num * num;
 tel
 
+node pid(pre_error, error : float; kp, ki, kd : float) returns (y : float)
+let
+  y =   kp *. error +.  ki *. Utilities.integrator(error, dt, pre_error) +. kd *. Utilities.derivative(error, dt);
+tel
+
 (* Source : https://observablehq.com/@luciyer/euclidian-distance-in-rgb-color-space *)
 node euclidian_distance_rgb_color(color1, color2 : color) returns (d : float)
 let
@@ -27,7 +34,7 @@ tel
 node controller(sens : sensors; iti : itielts)
        returns (rspeed : wheels; arriving : bool)
 var i : int;
-    actual_speed, in_red, in_green, error : float;
+    actual_speed, in_red, in_green, error, pre_error, pid : float;
 let  
   arriving = (iti[>i<]).act = Stop;
   
@@ -36,21 +43,25 @@ let
   () = dbg_sensors("sensors : ", sens) ;
   () = dbg_itielt("iti : ", iti[>i<]) ;
   () = dbg_wheels("wheels", rspeed);
+
   
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
 
   error = euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sens.s_road) /. 255.0 *. (if in_green >. in_red then -. 1.0 else 1.0);
+  pre_error = 0.0 fby error;
   () = Debug.dbg_float("error = ", error);
   () = Debug.dbg_float("in_red = ", in_red);
   () = Debug.dbg_float("in_green = ", in_green);
   
 
-  actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 10.0 else (0.0 fby actual_speed);
+  actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 20.0 else (0.0 fby actual_speed);
+  pid = pid(pre_error, error, actual_speed, 1.0, 1.0); 
+  () = Debug.dbg_float("pid = ", pid);
 
   switch (iti[>i<]).act
-  | Go do rspeed = if error >. 0.0 then { left = actual_speed -. actual_speed *. Utilities.abs(error); right = actual_speed }
-                   else  { left = actual_speed ; right = actual_speed  -. actual_speed *. Utilities.abs(error)};
+  | Go do rspeed = if error >. 0.0 then { left = actual_speed -. Utilities.abs(pid); right = actual_speed }
+                   else  { left = actual_speed ; right = actual_speed  -. Utilities.abs(pid)};
   | Turn do rspeed =   { left = actual_speed; right = actual_speed -. actual_speed *. in_red};
   | Stop do rspeed = { left = 0.0; right = 0.0};
   end;
