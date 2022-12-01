@@ -1,7 +1,18 @@
+(* open Globals importe tous les éléments du module Globals, 
+ * ce qui permet de les utiliser sans utiliser la préfixe "Globals." *)
 open Globals
 
+(* Pour l’intégration, on suppose que notre intégrale est échantillonné tous les dt instants. 
+ * Si dt est très petit, ca nous donne une bonne approximation de l’intégrale. 
+ * On fait une hypothèse sur la variation du signal qu’on intègre : dans notre code dt est fixe. *)
 const dt : float = 0.01
 
+(* **************************************** DEBUG **************************************** *)
+
+(* Le fichier globals.ept définit le type itielt : type itielt = { act : action; param : float }
+ * et fournit la fonction suivante : dbg_action(msg : string; act : action)
+ * Mais cette fonction ne permet pas d'imprimer à la fois le type d'opération et la valeur du paramètre sur la même ligne. 
+ * A cet effet, la fonction suivante a été écrite :   *)
 fun dbg_itielt(msg : string; iti : itielt) returns ()
 var w0, w1, w2, w3 : Debug.world;
 let
@@ -17,6 +28,7 @@ let
   w3 = Debug.d_string(w2, "\n");
 tel
 
+(* La fonction dbg_pid() permet d'imprimer sur une même ligne tous les coefficients utilisés pour le calcul du pid *)
 fun dbg_pid(msg : string; kp, ki, kd : float) returns ()
 var w0, w1, w2, w3, w4, w5, w6, w7 : Debug.world;
 let
@@ -32,12 +44,13 @@ let
   w7 = Debug.d_string(w6, "\n");
 tel
 
-node pow2(num : int) returns (result : int)
-let
-  result = num * num;
-tel
+(* **************************************** PID **************************************** *)
 
-node pid(pre_error, error : float; kp, ki, kd : float) returns (y : float)
+(* PID controller : proportional–integral–derivative controller
+ * La fonction pid_controller() reçoit comme paramètres les valeurs error et pre_error, qui représentent, respectivement,
+ * le taux d'erreur à l'instant courant, et le taux d'erreur à l'instant précédent. 
+ * De plus, cette fonction reçoit les coefficients requis pour le calcul du pid *)
+node pid_controller(pre_error, error : float; kp, ki, kd : float) returns (y : float)
 let
   y =   kp *. error +.  ki *. Utilities.integrator(error, dt, pre_error) +. kd *. Utilities.derivative(error, dt);
 tel
@@ -54,40 +67,71 @@ let
   kd = 0.0 -> Utilities.min_float(max_speed, if (not error_3 and second_error and first_error and Utilities.abs(error) <=. 0.1) or (second_error <> false fby second_error) then (pre kd) +. 1.0 else (pre kd));
 tel
 
+(* **************************************** COLOR COMPARISON **************************************** *)
 (* Source : https://observablehq.com/@luciyer/euclidian-distance-in-rgb-color-space *)
-node euclidian_distance_rgb_color(color1, color2 : color) returns (d : float)
+
+fun pow_exponent_two(num : int) returns (result : int)
 let
-  d = Mathext.sqrt( Mathext.float(pow2(color2.green - color1.green)) +. Mathext.float(pow2(color2.red - color1.red)) +. Mathext.float(pow2(color2.blue - color1.blue)) )
+  result = num * num;
 tel
 
-node controller(sens : sensors; iti : itielts)
-       returns (rspeed : wheels; arriving : bool)
+fun pow_difference_rgb_component(rgb_component1, rgb_component2 : int) returns (result : float)
+let
+  result = Mathext.float( pow_exponent_two( rgb_component2 - rgb_component1 ) );
+tel
+
+node euclidian_distance_rgb_color(color1, color2 : color) returns (d : float)
+let
+  d = Mathext.sqrt( pow_difference_rgb_component(color2.green, color1.green)
+                 +. pow_difference_rgb_component(color2.red, color1.red) 
+                 +. pow_difference_rgb_component(color2.blue, color1.blue) );
+tel
+
+(* **************************************** SPEED **************************************** *)
+
+fun speed_pid(pid, actual_speed : float) returns (speed : float)
+let
+  speed = actual_speed -. Utilities.abs(pid);
+tel
+
+node get_rspeed(iti : itielt; error, in_red, pid, actual_speed : float) returns (rspeed : wheels)
+let
+
+  switch iti.act
+  | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
+                   else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
+  | Turn do  rspeed = if Utilities.countdown(true, 25) > 0 then { left = -. actual_speed ; right = actual_speed}
+                      else if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
+                      else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
+  | Stop do rspeed = { left = 0.0; right = 0.0};
+  end;
+
+tel
+
+node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
 var i : int;
     actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float;
 let  
-  arriving = (iti[>i<]).act = Stop;
-  
   i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) then (0 fby i + 1) else (0 fby i);
- 
 
+  arriving = (iti[>i<]).act = Stop;
+  rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed);
   
+ 
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
 
   error = euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sens.s_road) /. 255.0 *. (if in_green >. in_red then -. 1.0 else 1.0);
   pre_error = 0.0 fby error;
+
   () = Debug.dbg_float("error = ", error);
-  () =dbg_pid("", kp, ki, kd);
+  () = dbg_pid("", kp, ki, kd);
+  () =  dbg_itielt("iti[i] : ", iti[>i<]);
+  () =  dbg_wheels("rspeed = ", rspeed);
 
-
-  actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 20.0 else (0.0 fby actual_speed);
+  actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 30.0 else (0.0 fby actual_speed);
   (kp, ki, kd) = trial_and_error(actual_speed, error);
-  pid = pid(pre_error, error, kp, ki, kd); 
-
-  switch (iti[>i<]).act
-  | Go do rspeed = if error >. 0.0 then { left = actual_speed -. Utilities.abs(pid); right = actual_speed }
-                   else  { left = actual_speed ; right = actual_speed  -. Utilities.abs(pid)};
-  | Turn do rspeed =   { left = actual_speed; right = actual_speed -. actual_speed *. in_red};
-  | Stop do rspeed = { left = 0.0; right = 0.0};
-  end;
+  pid = pid_controller(pre_error, error, kp, ki, kd); 
 tel
+
+
