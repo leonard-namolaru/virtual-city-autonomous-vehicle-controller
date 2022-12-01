@@ -103,12 +103,15 @@ let
 tel
 
 node get_rspeed(iti : itielt; error, in_red, pid, actual_speed : float) returns (rspeed : wheels)
+var d:float;t:int;
 let
-
+  d = ((2.0 *. Globals.pi *. Globals.cB)/. 100.0) /. (360.0 /. (iti.param));
+  t = Mathext.int(actual_speed *. d);
+  () = Debug.dbg_int("t = ", t);
   switch iti.act
   | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                    else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
-  | Turn do  rspeed = if Utilities.countdown(true, 25) > 0 then { left = -. actual_speed ; right = actual_speed}
+  | Turn do  rspeed = if Utilities.countdown(true, 37) > 0 then { left = 0.0 ; right = actual_speed}
                       else if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                       else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
   | Stop do rspeed = { left = 0.0; right = 0.0};
