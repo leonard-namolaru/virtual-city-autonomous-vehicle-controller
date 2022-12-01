@@ -107,7 +107,6 @@ var d:float;t:int;
 let
   d = ((2.0 *. Globals.pi *. Globals.cB)/. 100.0) /. (360.0 /. (iti.param));
   t = Mathext.int(actual_speed *. d);
-  () = Debug.dbg_int("t = ", t);
   switch iti.act
   | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                    else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
@@ -122,11 +121,14 @@ tel
 (* **************************************** CONTROLLER **************************************** *)
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
-var i : int;
+var i : int; last enter:bool=false; exit:bool;
     actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float;
 let  
-  i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) then (0 fby i + 1) else (0 fby i);
-  arriving = (iti[>i<]).act = Stop;
+  (* i = 0 fby if (not(enter) and not(exit)) then (i) else (1+i);
+  enter = false fby (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255);
+  exit = false fby (not(sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) and (last enter));
+  *)
+  arriving = (iti[>i<]).act = Stop; 
   rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed);
   
  
