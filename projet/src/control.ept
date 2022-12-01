@@ -43,10 +43,15 @@ let
 tel
 
 node trial_and_error(max_speed, error : float) returns (kp, ki, kd : float)
+var first_error, second_error, error_3 : bool;
 let
-  kp = max_speed;
-  ki = max_speed -> Utilities.min_float(max_speed, if error = 0.0 then Utilities.max_float(0.0, (pre ki) -. 0.5) else (pre ki));
-  kd = max_speed -> Utilities.min_float(max_speed, if ki = (0.0 fby ki) and error = 0.0 then Utilities.max_float(0.0, (pre kd) -. 0.5) else (pre kd));
+  first_error = false -> if pre (0.0 fby kp) = (1.0 fby (1.0 fby kp)) and Utilities.abs(error) >. 0.1 then true else (pre first_error);
+  second_error = false -> if pre (0.0 fby ki) = (1.0 fby (1.0 fby ki)) and Utilities.abs(error) >. 0.1 then true else (pre second_error);
+  error_3 = false -> if pre (0.0 fby kd) = (1.0 fby (1.0 fby kd)) and Utilities.abs(error) >. 0.1 then true else (pre error_3);
+
+  kp = 0.0 -> Utilities.min_float(max_speed, if not first_error and Utilities.abs(error) <=. 0.1 then (pre kp) +. 1.0 else (pre kp));
+  ki = 0.0 -> Utilities.min_float(max_speed, if (not second_error and Utilities.abs(error) <=. 0.1 and first_error) or (first_error <> false fby first_error)  then Utilities.max_float(0.0, (pre ki) +. 1.0) else (pre ki));
+  kd = 0.0 -> Utilities.min_float(max_speed, if (not error_3 and second_error and first_error and Utilities.abs(error) <=. 0.1) or (second_error <> false fby second_error) then (pre kd) +. 1.0 else (pre kd));
 tel
 
 (* Source : https://observablehq.com/@luciyer/euclidian-distance-in-rgb-color-space *)
