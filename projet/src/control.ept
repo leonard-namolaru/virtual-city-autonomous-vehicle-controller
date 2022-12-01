@@ -131,15 +131,15 @@ let
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
   error = euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sens.s_road) /. 255.0 *. (if in_green >. in_red then -. 1.0 else 1.0);
 
-  actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 30.0 else (0.0 fby actual_speed);
+  actual_speed = if (iti[>i<]).act = Go then (iti[>i<]).param *. 360.0 *. Globals.cD /. 100.0 else (0.0 fby actual_speed);
   (kp, ki, kd) = trial_and_error(actual_speed, error);
   pid = pid_controller(pre_error, error, kp, ki, kd); 
   pre_error = 0.0 fby error;
   
   () = Debug.dbg_float("error = ", error);
   () = dbg_pid("", kp, ki, kd);
-  () =  dbg_itielt("iti[i] : ", iti[>i<]);
-  () =  dbg_wheels("rspeed = ", rspeed);
+  () = dbg_itielt("iti[i] : ", iti[>i<]);
+  () = Debug.dbg_float("v = ",(((Globals.cD*.rspeed.left)+.(Globals.cD*.rspeed.right))/.200.0));
 tel
 
 
