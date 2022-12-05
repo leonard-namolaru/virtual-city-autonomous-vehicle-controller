@@ -121,17 +121,10 @@ tel
 (* **************************************** CONTROLLER **************************************** *)
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
-var i : int; last enter:bool=false; exit:bool;
+var last i : int=0; last action : action = Go;
     actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float;
-let  
-  (* i = 0 fby if (not(enter) and not(exit)) then (i) else (1+i);
-  enter = false fby (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255);
-  exit = false fby (not(sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) and (last enter));
-  *)
-  arriving = (iti[>i<]).act = Stop; 
-  rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed);
+let
   
- 
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
   error = if sens.s_road.red = 255 and sens.s_road.blue = 0 then 0.0
@@ -144,13 +137,30 @@ let
   pid = pid_controller(pre_error, error, kp, ki, kd); 
   pre_error = 0.0 fby error;
 
+  automaton
+    state Go
+      do
+        i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) then (last i+1) else (last i);
+        action = (iti[>i<]).act;
+        arriving = action = Stop;
+        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed);
+      until (iti[>i<]).act = Turn then Turn
+      
+    state Turn
+      var x : int;
+      do 
+        x = Utilities.countdown(true, 37);
+        i = if(x>0) then last i else (last i+1);
+        action = (iti[>i<]).act;
+        arriving = action = Stop;
+        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed);
+      until (iti[>i<]).act = Go then Go
+  end;
+
  
   
-  () = Debug.dbg_float("error = ", error);
-  () = dbg_pid("", kp, ki, kd);
+  () = Debug.dbg_int("i = ", i);
   () = dbg_itielt("iti[i] : ", iti[>i<]);
-  () = Debug.dbg_float("v = ",(((Globals.cD*.rspeed.left)+.(Globals.cD*.rspeed.right))/.200.0));
-  () = dbg_sensors("sensors : ", sens);
 tel
 
 
