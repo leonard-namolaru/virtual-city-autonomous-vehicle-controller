@@ -161,6 +161,13 @@ let
   
   () = Debug.dbg_int("i = ", i);
   () = dbg_itielt("iti[i] : ", iti[>i<]);
+  (* 
+  () = Debug.dbg_float("error = ", error);
+  () = dbg_pid("", kp, ki, kd);
+  () = Debug.dbg_float("v = ",(((Globals.cD*.rspeed.left)+.(Globals.cD*.rspeed.right))/.200.0));
+  () = dbg_sensors("sensors : ", sens); 
+  *)
+
 tel
 
 
