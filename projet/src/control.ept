@@ -110,7 +110,7 @@ let
   switch iti.act
   | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                    else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
-  | Turn do  rspeed = if Utilities.countdown(true, 37) > 0 then { left = 0.0 ; right = actual_speed}
+  | Turn do  rspeed = if Utilities.countdown(true, 37) > 0 then (if iti.param >. 0.0 then { left = 0.0 ; right = actual_speed} else {left = actual_speed ; right = 0.0})
                       else if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                       else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
   | Stop do rspeed = { left = 0.0; right = 0.0};
