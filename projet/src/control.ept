@@ -120,9 +120,8 @@ tel
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
 var last i : int=0; last action : action = Go; last t : int; last last_sen: color = { red = 128; green = 128; blue = 128 };
     actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float; last last_speed : float = 0.0; 
-    last after_turn : bool = false;
-let
-  
+    last after_turn : bool = false; 
+  let
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
   error = if sens.s_road.red = 255 and sens.s_road.blue = 0  or (sens.s_road.green = 255 and sens.s_road.blue = 0) then 0.0
@@ -131,7 +130,7 @@ let
   actual_speed =   if sens.s_front.red = 255 and sens.s_road.red = 255 and sens.s_road.blue = 0 or sens.s_sonar < 1000 then 0.0
                    else if (iti[>i<]).act = Go then (iti[>i<]).param *. 360.0 *. Globals.cD /. 100.0 else (0.0 fby actual_speed);
                    
-  (kp, ki, kd) = trial_and_error(after_turn, actual_speed, error);
+  (kp, ki, kd) =  trial_and_error(true -> after_turn, actual_speed, error);
   pid = pid_controller(pre_error, error, kp, ki, kd); 
   pre_error = 0.0 fby error;
   last_sen = sens.s_road;
