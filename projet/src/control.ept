@@ -119,7 +119,7 @@ tel
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
 var last i : int=0; last action : action = Go; last t : int; last last_sen: color = { red = 128; green = 128; blue = 128 };
-    actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float;
+    actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float; last last_speed : float = 0.0;
 let
   
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
@@ -134,6 +134,7 @@ let
   pid = pid_controller(pre_error, error, kp, ki, kd); 
   pre_error = 0.0 fby error;
   last_sen = sens.s_road;
+  last_speed = (iti[>i<]).param;
 
   automaton
     state Go
@@ -143,8 +144,8 @@ let
         action = (iti[>i<]).act;
         arriving = action = Stop;
         rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed,0);
-        d = ((2.0 *. Globals.pi *. Globals.cB)/. 100.0) /. (360.0 /. Utilities.abs((iti[>i<]).param));
-        t = Mathext.int(actual_speed *. d);
+        d = ((2.0 *. Globals.pi *. Globals.cB *. 100.0)) /. (360.0 /. Utilities.abs((iti[>i<]).param));
+        t = Mathext.int(d /. (last last_speed));
       until (iti[>i<]).act = Turn then Turn
       
     state Turn
