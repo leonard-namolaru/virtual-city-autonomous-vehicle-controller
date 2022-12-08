@@ -103,14 +103,11 @@ let
 tel
 
 node get_rspeed(iti : itielt; error, in_red, pid, actual_speed : float ; i:int) returns (rspeed : wheels)
-var d:float;t:int;
 let
-  d = ((2.0 *. Globals.pi *. Globals.cB)/. 100.0) /. (360.0 /. (iti.param));
-  t = Mathext.int(actual_speed *. d);
   switch iti.act
   | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                    else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
-  | Turn do  rspeed = if Utilities.countdown(true, t) > 0 then (if iti.param >. 0.0 then { left = 0.0 ; right = actual_speed} else {left = actual_speed ; right = 0.0})
+  | Turn do rspeed = if Utilities.countdown(true, i) > 0 then (if iti.param >. 0.0 then { left = 0.0 ; right = actual_speed} else {left = actual_speed ; right = 0.0})
                       else if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                       else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
   | Stop do rspeed = { left = 0.0; right = 0.0};
@@ -121,13 +118,13 @@ tel
 (* **************************************** CONTROLLER **************************************** *)
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
-var last i : int=0; last action : action = Go; last t : int;
+var last i : int=0; last action : action = Go; last t : int; last last_sen: color = { red = 128; green = 128; blue = 128 };
     actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float;
 let
   
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
-  error = if sens.s_road.red = 255 and sens.s_road.blue = 0 then 0.0
+  error = if sens.s_road.red = 255 and sens.s_road.blue = 0  or (sens.s_road.green = 255 and sens.s_road.blue = 0) then 0.0
           else euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sens.s_road) /. 255.0 *. (if in_green >. in_red then -. 1.0 else 1.0);
 
   actual_speed =   if sens.s_front.red = 255 and sens.s_road.red = 255 and sens.s_road.blue = 0 then 0.0
@@ -136,12 +133,13 @@ let
   (kp, ki, kd) = trial_and_error(actual_speed, error);
   pid = pid_controller(pre_error, error, kp, ki, kd); 
   pre_error = 0.0 fby error;
+  last_sen = sens.s_road;
 
   automaton
     state Go
       var d : float;
       do
-        i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) then (last i+1) else (last i);
+        i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255 and (last last_sen).green < 255) then (last i+1) else (last i);
         action = (iti[>i<]).act;
         arriving = action = Stop;
         rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed,0);
@@ -160,9 +158,8 @@ let
   end;
 
  
-  
+  () = dbg_sensors("sensors : ", sens); 
   () = Debug.dbg_int("i = ", i);
-  () = Debug.dbg_int("t = ", t);
   () = dbg_itielt("iti[i] : ", iti[>i<]);
   (* 
   () = Debug.dbg_float("error = ", error);
