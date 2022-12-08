@@ -102,7 +102,7 @@ let
   speed = actual_speed -. Utilities.abs(pid);
 tel
 
-node get_rspeed(iti : itielt; error, in_red, pid, actual_speed : float) returns (rspeed : wheels)
+node get_rspeed(iti : itielt; error, in_red, pid, actual_speed : float ; i:int) returns (rspeed : wheels)
 var d:float;t:int;
 let
   d = ((2.0 *. Globals.pi *. Globals.cB)/. 100.0) /. (360.0 /. (iti.param));
@@ -110,7 +110,7 @@ let
   switch iti.act
   | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                    else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
-  | Turn do  rspeed = if Utilities.countdown(true, 37) > 0 then (if iti.param >. 0.0 then { left = 0.0 ; right = actual_speed} else {left = actual_speed ; right = 0.0})
+  | Turn do  rspeed = if Utilities.countdown(true, t) > 0 then (if iti.param >. 0.0 then { left = 0.0 ; right = actual_speed} else {left = actual_speed ; right = 0.0})
                       else if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
                       else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
   | Stop do rspeed = { left = 0.0; right = 0.0};
@@ -121,7 +121,7 @@ tel
 (* **************************************** CONTROLLER **************************************** *)
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
-var last i : int=0; last action : action = Go;
+var last i : int=0; last action : action = Go; last t : int;
     actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float;
 let
   
@@ -139,27 +139,30 @@ let
 
   automaton
     state Go
+      var d : float;
       do
         i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255) then (last i+1) else (last i);
         action = (iti[>i<]).act;
         arriving = action = Stop;
-        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed);
+        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed,0);
+        d = ((2.0 *. Globals.pi *. Globals.cB)/. 100.0) /. (360.0 /. Utilities.abs((iti[>i<]).param));
+        t = Mathext.int(actual_speed *. d);
       until (iti[>i<]).act = Turn then Turn
       
     state Turn
-      var x : int;
       do 
-        x = Utilities.countdown(true, 37);
-        i = if(x>0) then last i else (last i+1);
+        t = last t - 1;
+        i = if (last t>0) then last i else (last i+1);
         action = (iti[>i<]).act;
         arriving = action = Stop;
-        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed);
+        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed,t);
       until (iti[>i<]).act = Go then Go
   end;
 
  
   
   () = Debug.dbg_int("i = ", i);
+  () = Debug.dbg_int("t = ", t);
   () = dbg_itielt("iti[i] : ", iti[>i<]);
   (* 
   () = Debug.dbg_float("error = ", error);
