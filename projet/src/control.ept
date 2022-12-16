@@ -144,14 +144,21 @@ var last i : int=0; last action : action = Go; last t : int; last last_sen: colo
         action = (iti[>i<]).act;
         arriving = action = Stop;
         rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed,0);
+
+        (* t pour temps, représente le temps nécéssaire pour tourner sur une roue avec la formule V = D/T
+           d est calculé en créeant un faux cercle de centre une des roues et de rayon, distance entre les 2 roues *)
         d = ((2.0 *. Globals.pi *. Globals.cB *. 100.0)) /. (360.0 /. Utilities.abs((iti[>i<]).param));
         t = Mathext.int(d /. (last last_speed));
+
         after_turn = false;
       until (iti[>i<]).act = Turn then Turn
       
     state Turn
       do 
+        (* T est un compteur qui initialisé dans GO qui est le nombre de tick dont la voiture à besoin pour
+           tourner selon l'angle du virage demandé *)
         t = last t - 1;
+        (* Lorsque le timer est terminé, on passe à l'instruction suivante *)
         i = if (last t>0) then last i else (last i+1);
         action = (iti[>i<]).act;
         arriving = action = Stop;
@@ -160,17 +167,8 @@ var last i : int=0; last action : action = Go; last t : int; last last_sen: colo
       until (iti[>i<]).act = Go then Go
   end;
 
-  () = Debug.dbg_bool("after_turn = ", after_turn);
-
-  () = Debug.dbg_float("error = ", error);
-  () = dbg_pid("", kp, ki, kd);
-  () = dbg_sensors("sensors : ", sens); 
-  () = Debug.dbg_int("i = ", i);
-  () = dbg_itielt("iti[i] : ", iti[>i<]);
-  (* 
-  () = Debug.dbg_float("v = ",(((Globals.cD*.rspeed.left)+.(Globals.cD*.rspeed.right))/.200.0));
-  *)
-
+  () = Trace.trace_float("left", rspeed.left);
+  () = Trace.trace_float("right", rspeed.right);
 tel
 
 
