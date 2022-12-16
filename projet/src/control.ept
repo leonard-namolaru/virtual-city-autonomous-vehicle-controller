@@ -71,8 +71,8 @@ let
   reset kd_determined = false -> if pre_kd = pre_pre_kd and error <> 0.0 then true else (pre kd_determined) every after_turn;
 
   kp = 0.0 -> max_speed;
-  reset ki = 0.0 -> if (not ki_determined and kd_determined and error = 0.0) or (kd_determined <> false fby kd_determined) then (pre ki) +. 1.0 else (pre ki) every after_turn;
-  reset kd = 0.0 -> if (not kd_determined and error = 0.0) then (pre kd) +. 1.0 else (pre kd) every after_turn;
+  reset ki = 0.0 -> if (not ki_determined and kd_determined and (error = 0.0)) or (kd_determined <> false fby kd_determined) then (pre ki) +. 1.0 else (pre ki) every after_turn;
+  reset kd = 0.0 -> if (not kd_determined and error = 0.0) then (pre kd) +. 1.0 else if (pre kd <. 15.0) then 15.0 else (pre kd) every after_turn;
 tel
 
 (* **************************************** COLOR COMPARISON **************************************** *)
