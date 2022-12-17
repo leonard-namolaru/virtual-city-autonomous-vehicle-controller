@@ -99,8 +99,7 @@ let
   error_abs = if sensor_road.red = 255 and sensor_road.blue = 0  (* Si nous sommes au-dessus d'une ligne rouge sur la route indiquant la presence d'un feu de circulation *)
                or is_green_line_on_road(sensor_road) (* Si nous sommes au-dessus d'une ligne verte sur la route indiquant que nous devons passer a l'etape suivante *)
                  then 0.0
-              else 
-                 euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sensor_road) /. 255.0;
+                 else euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sensor_road) /. 255.0;
 
   in_red   =  Mathext.float(sensor_road.red) /. 255.0;
   in_green =  Mathext.float(sensor_road.green) /. 255.0;
@@ -169,11 +168,9 @@ tel
 node get_actual_speed(sens : sensors ; iti : itielt) returns (actual_speed : float)
 let
   actual_speed =  if sens.s_front.red = 255 and sens.s_road.red = 255 and sens.s_road.blue = 0 or sens.s_sonar < 80 
-                    then 0.0
-                  else 
-                    if iti.act = Go 
-                      then iti.param *. 360.0 *. Globals.cD /. 100.0 
-                    else (0.0 fby actual_speed);
+                         then 0.0
+                         else if iti.act = Go then iti.param *. 360.0 *. Globals.cD /. 100.0 
+                                              else (0.0 fby actual_speed);
 tel
 
 fun speed_pid(pid, actual_speed : float) returns (speed : float)
@@ -182,28 +179,21 @@ let
 tel
 
 node get_rspeed(iti : itielt; error, pid, actual_speed : float ; time_required_to_turn : int) returns (rspeed : wheels)
+var speed_according_error : wheels;
 let
+  speed_according_error = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
+                                           else { left = actual_speed ; right = speed_pid(pid, actual_speed)};
+
   switch iti.act
-  | Go do rspeed = if error >. 0.0  
-                      then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
-                   else        
-                       { left = actual_speed ; right = speed_pid(pid, actual_speed)};
-
+  | Go do rspeed = speed_according_error;
   | Turn do rspeed = if Utilities.countdown(true, time_required_to_turn) > 0 
-                        then if iti.param >. 0.0 
-                                then { left = 0.0 ; right = actual_speed} 
-                             else    {left = actual_speed ; right = 0.0}
-                    else 
-                      if error >. 0.0  
-                        then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
-                      else                  
-                            { left = actual_speed ; right = speed_pid(pid, actual_speed)};
-
+                          then if iti.param >. 0.0 then { left = 0.0 ; right = actual_speed} 
+                                                   else {left = actual_speed ; right = 0.0}
+                    else speed_according_error;
   | Stop do rspeed = { left = 0.0; right = 0.0};
   end;
 
 tel
-
 
 
 (* **************************************** CONTROLLER **************************************** *)
@@ -226,17 +216,17 @@ var pre_iti_param, actual_speed, error, pid : float;
 
   automaton
     state Go
-      var d : float;
+      var distance_to_right_axis_after_turn : float;
       do
         i = if (is_green_line_on_road(sens.s_road) and pre_s_road_green < 255) then (last i) + 1 else last i;
         rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed, 0);
         after_turn = false;
 
-        (* t pour temps, représente le temps nécéssaire pour tourner sur une roue avec la formule V = D/T
-           d est calculé en créeant un faux cercle de centre une des roues et de rayon, distance entre les 2 roues *)
-        d = ((2.0 *. Globals.pi *. Globals.cB *. 100.0)) /. (360.0 /. Utilities.abs((iti[>i<]).param));
-        time_required_to_turn = Mathext.int(d /. pre_iti_param);
+        (* distance_to_right_axis_after_turn est la distance que la roue en mouvement doit parcourir pour se mettre dans le bon axe *)
+        distance_to_right_axis_after_turn = ((2.0 *. pi *. cB *. 100.0)) /. (360.0 /. Utilities.abs((iti[>i<]).param));
 
+        (* time_required_to_turn represente le temps necessaire pour tourner sur une roue avec la formule V = D/T *)
+        time_required_to_turn = Mathext.int(distance_to_right_axis_after_turn /. pre_iti_param);
       until (iti[>i<]).act = Turn then Turn
       
     state Turn
@@ -245,8 +235,8 @@ var pre_iti_param, actual_speed, error, pid : float;
         rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed, time_required_to_turn);
         after_turn = true;
 
-        (* T est un compteur qui initialisé dans GO qui est le nombre de tick dont la voiture à besoin pour
-         * tourner selon l'angle du virage demandé *)
+        (* time_required_to_turn est un compteur qui initialise dans GO. Represente est le nombre d'instants dont la voiture a besoin pour
+         * tourner selon l'angle du virage demande *)
         time_required_to_turn = last time_required_to_turn - 1;
       until (iti[>i<]).act = Go then Go
   end;
