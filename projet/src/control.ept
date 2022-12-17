@@ -45,7 +45,63 @@ let
   w7 = Debug.d_string(w6, "\n");
 tel
 
+(* **************************************** COLOR COMPARISON **************************************** *)
+(* Etant donne que l'espace colorimetrique RGB a trois dimensions (R, G, B), 
+ * sa distance euclidienne serait definie comme suit :
+ * distance = sqrt( (r2 - r1)^2 + (g2 - g1)^2 + (b2 - b1)^2 )
+ * Source : https://observablehq.com/@luciyer/euclidian-distance-in-rgb-color-space 
+ *
+ * Bien que le fichier utilities.ept contienne des fonctions telles que norm_color() et compare_colors(), 
+ * elles ne correspondaient pas a la méthode que nous voulions utiliser. 
+ * C'est pourquoi nous l'avons implemente en utilisant les 3 fonctions suivantes, 
+ * chacune d'elles effectue une des etapes du calcul. *)
+
+(* Une fonction simple qui reçoit un nombre entier et renvoie le nombre à la puissance 2 *)
+fun pow_exponent_two(num : int) returns (result : int)
+let
+  result = num * num;
+tel
+
+(* La fonction recoit 2 entiers representant la meme partie au sein d'une valeur RGB 
+ * (par exemple, 2 valeurs representant la couleur rouge dans deux valeurs RGB differentes) 
+ * et renvoie la difference entre la deuxieme valeur et la premiere, a la puissance 2 *)
+fun pow_difference_rgb_component(rgb_component1, rgb_component2 : int) returns (result : float)
+let
+  result = Mathext.float( pow_exponent_two( rgb_component2 - rgb_component1 ) );
+tel
+
+(* Distance euclidienne entre deux couleurs *)
+fun euclidian_distance_rgb_color(color1, color2 : color) returns (d : float)
+let
+  d = Mathext.sqrt( pow_difference_rgb_component(color2.green, color1.green)
+                 +. pow_difference_rgb_component(color2.red, color1.red) 
+                 +. pow_difference_rgb_component(color2.blue, color1.blue) );
+tel
+
 (* **************************************** PID **************************************** *)
+
+(* Pour le pid, nous devons calculer l'erreur : une valeur comprise entre -1 et 1. 
+ * Pour le faire, nous verifions quelle est la distance entre le point ou nous sommes censes etre et le point ou nous sommes maintenant,
+ * nous divisons le resultat par 255 car nous calculons la distance entre des valeurs de couleur et ainsi nous obtenons une valeur entre 0 et 1.
+ *
+ * Apres cela, nous verifions si la voiture devie davantage du cote droit (couleur rouge) ou du cote gauche (couleur verte),
+ * déterminant ainsi que si la voiture devie davantage du cote droit, la valeur d'erreur que nous avons calculee sera positive,
+ * si la voiture devie davantage vers la gauche, l'erreur est negative. *)
+fun get_error(sensor_road : color) returns (error : float)
+var in_red, in_green, error_abs : float;
+let
+  error_abs = if sensor_road.red = 255 and sensor_road.blue = 0  (* Si nous sommes au-dessus d'une ligne rouge sur la route indiquant la presence d'un feu de circulation *)
+               or (sensor_road.green = 255 and sensor_road.blue = 0) (* Si nous sommes au-dessus d'une ligne verte sur la route indiquant que nous devons passer a l'etape suivante *)
+                 then 0.0
+              else 
+                 euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sensor_road) /. 255.0;
+
+  in_red   =  Mathext.float(sensor_road.red) /. 255.0;
+  in_green =  Mathext.float(sensor_road.green) /. 255.0;
+
+  error = error_abs *. (if in_green >. in_red then -. 1.0 else 1.0);
+tel
+
 
 (* PID controller : proportional–integral–derivative controller
  * La noeud pid_controller() recoit comme parametres error et pre_error, qui representent, respectivement,
@@ -98,26 +154,6 @@ let
   every after_turn; (* Apres chaque virage, nous determinons a nouveau les valeurs des coefficients *)
 tel
 
-(* **************************************** COLOR COMPARISON **************************************** *)
-(* Source : https://observablehq.com/@luciyer/euclidian-distance-in-rgb-color-space *)
-
-fun pow_exponent_two(num : int) returns (result : int)
-let
-  result = num * num;
-tel
-
-fun pow_difference_rgb_component(rgb_component1, rgb_component2 : int) returns (result : float)
-let
-  result = Mathext.float( pow_exponent_two( rgb_component2 - rgb_component1 ) );
-tel
-
-node euclidian_distance_rgb_color(color1, color2 : color) returns (d : float)
-let
-  d = Mathext.sqrt( pow_difference_rgb_component(color2.green, color1.green)
-                 +. pow_difference_rgb_component(color2.red, color1.red) 
-                 +. pow_difference_rgb_component(color2.blue, color1.blue) );
-tel
-
 (* **************************************** SPEED **************************************** *)
 
 fun speed_pid(pid, actual_speed : float) returns (speed : float)
@@ -125,7 +161,7 @@ let
   speed = actual_speed -. Utilities.abs(pid);
 tel
 
-node get_rspeed(iti : itielt; error, in_red, pid, actual_speed : float ; i:int) returns (rspeed : wheels)
+node get_rspeed(iti : itielt; error, pid, actual_speed : float ; i:int) returns (rspeed : wheels)
 let
   switch iti.act
   | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
@@ -142,15 +178,12 @@ tel
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
 var last i : int=0; last action : action = Go; last t : int; last last_sen: color = { red = 128; green = 128; blue = 128 };
-    actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float; last last_speed : float = 0.0; 
+    actual_speed, error, pre_error, pid, kp, ki, kd : float; last last_speed : float = 0.0; 
     last after_turn : bool = false; 
   let
-
-  in_red =  Mathext.float(sens.s_road.red) /. 255.0;
-  in_green =  Mathext.float(sens.s_road.green) /. 255.0;
-  error = if sens.s_road.red = 255 and sens.s_road.blue = 0  or (sens.s_road.green = 255 and sens.s_road.blue = 0) then 0.0
-          else euclidian_distance_rgb_color( { red = 0; green = 0; blue = 255 }, sens.s_road) /. 255.0 *. (if in_green >. in_red then -. 1.0 else 1.0);
-
+  () = Trace.trace_float("error", error); 
+  error = get_error(sens.s_road);
+  
   actual_speed =   if sens.s_front.red = 255 and sens.s_road.red = 255 and sens.s_road.blue = 0 or sens.s_sonar < 80 then 0.0
                    else if (iti[>i<]).act = Go then (iti[>i<]).param *. 360.0 *. Globals.cD /. 100.0 else (0.0 fby actual_speed);
                    
@@ -170,7 +203,7 @@ var last i : int=0; last action : action = Go; last t : int; last last_sen: colo
         i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255 and (last last_sen).green < 255) then (last i+1) else (last i);
         action = (iti[>i<]).act;
         arriving = action = Stop;
-        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed,0);
+        rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed,0);
 
         (* t pour temps, représente le temps nécéssaire pour tourner sur une roue avec la formule V = D/T
            d est calculé en créeant un faux cercle de centre une des roues et de rayon, distance entre les 2 roues *)
@@ -189,7 +222,7 @@ var last i : int=0; last action : action = Go; last t : int; last last_sen: colo
         i = if (last t>0) then last i else (last i+1);
         action = (iti[>i<]).act;
         arriving = action = Stop;
-        rspeed =  get_rspeed(iti[>i<], error, in_red, pid, actual_speed,t);
+        rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed,t);
         after_turn = true;
       until (iti[>i<]).act = Go then Go
   end;
