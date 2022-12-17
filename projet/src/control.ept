@@ -152,6 +152,7 @@ var pre_error : float;
     kp, ki, kd : float;
 let
   () = dbg_pid("\n", kp, ki, kd);
+
   pre_error = 0.0 fby error;
   (kp, ki, kd) =  set_kp_ki_kd(after_turn, actual_speed, error);
 
@@ -177,11 +178,21 @@ tel
 node get_rspeed(iti : itielt; error, pid, actual_speed : float ; i:int) returns (rspeed : wheels)
 let
   switch iti.act
-  | Go do rspeed = if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
-                   else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
-  | Turn do rspeed = if Utilities.countdown(true, i) > 0 then (if iti.param >. 0.0 then { left = 0.0 ; right = actual_speed} else {left = actual_speed ; right = 0.0})
-                      else if error >. 0.0  then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
-                      else                  { left = actual_speed ; right = speed_pid(pid, actual_speed)};
+  | Go do rspeed = if error >. 0.0  
+                      then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
+                   else        
+                       { left = actual_speed ; right = speed_pid(pid, actual_speed)};
+
+  | Turn do rspeed = if Utilities.countdown(true, i) > 0 
+                        then if iti.param >. 0.0 
+                                then { left = 0.0 ; right = actual_speed} 
+                             else    {left = actual_speed ; right = 0.0}
+                    else 
+                      if error >. 0.0  
+                        then { left = speed_pid(pid, actual_speed) ; right = actual_speed }
+                      else                  
+                            { left = actual_speed ; right = speed_pid(pid, actual_speed)};
+
   | Stop do rspeed = { left = 0.0; right = 0.0};
   end;
 
@@ -190,28 +201,27 @@ tel
 (* **************************************** CONTROLLER **************************************** *)
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
-var last i : int=0; last action : action = Go; last t : int; last last_sen: color = { red = 128; green = 128; blue = 128 };
+var last i : int=0; last t : int; last last_sen: color = { red = 128; green = 128; blue = 128 };
     actual_speed, error, pid : float; last last_speed : float = 0.0; 
     last after_turn : bool = false; 
   let
-  () = Trace.trace_float("error", error); 
-  error = get_error(sens.s_road);
-  
-  actual_speed =  get_actual_speed(sens, iti[>i<]);
-                   
-  pid = pid_controller(true -> after_turn, actual_speed, error); 
-  last_sen = sens.s_road;
-  last_speed = (iti[>i<]).param;
+    () = Trace.trace_float("error", error); 
+    () = dbg_itielt("\n iti[i] = ", iti[>i<]);
 
-  () = dbg_itielt("\n iti[i] = ", iti[>i<]);
+    error = get_error(sens.s_road); 
+    actual_speed =  get_actual_speed(sens, iti[>i<]);                 
+    pid = pid_controller(true -> after_turn, actual_speed, error); 
+    arriving = (iti[>i<]).act = Stop;
+
+    last_sen = sens.s_road;
+    last_speed = (iti[>i<]).param;
+
 
   automaton
     state Go
       var d : float;
       do
         i = if (sens.s_road.green = 255 and sens.s_road.blue = 0 and (0 fby sens.s_road.green) < 255 and (last last_sen).green < 255) then (last i+1) else (last i);
-        action = (iti[>i<]).act;
-        arriving = action = Stop;
         rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed,0);
 
         (* t pour temps, représente le temps nécéssaire pour tourner sur une roue avec la formule V = D/T
@@ -229,8 +239,6 @@ var last i : int=0; last action : action = Go; last t : int; last last_sen: colo
         t = last t - 1;
         (* Lorsque le timer est terminé, on passe à l'instruction suivante *)
         i = if (last t>0) then last i else (last i+1);
-        action = (iti[>i<]).act;
-        arriving = action = Stop;
         rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed,t);
         after_turn = true;
       until (iti[>i<]).act = Go then Go
