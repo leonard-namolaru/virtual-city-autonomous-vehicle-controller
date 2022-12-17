@@ -102,17 +102,6 @@ let
   error = error_abs *. (if in_green >. in_red then -. 1.0 else 1.0);
 tel
 
-
-(* PID controller : proportional–integral–derivative controller
- * La noeud pid_controller() recoit comme parametres error et pre_error, qui representent, respectivement,
- * le taux d'erreur à l'instant courant, et le taux d'erreur à l'instant precedent. 
- * De plus, ce noeud recoit les coefficients requis pour le calcul du pid *)
-node pid_controller(pre_error, error : float; kp, ki, kd : float) returns (y : float)
-let
-  y =   kp *. error +.  ki *. Utilities.integrator(error, dt, pre_error) +. kd *. Utilities.derivative(error, dt);
-tel
-
-
 (* Un noeud dont le but est de determiner les valeurs des coefficients kp, ki et kd.
  * Mode de fonctionnement : la valeur de kp est egale a la valeur de la vitesse maximale autorisee, 
  * la valeur de kd augmente progressivement tant que l'augmentation ne provoque pas d'erreur. 
@@ -154,7 +143,31 @@ let
   every after_turn; (* Apres chaque virage, nous determinons a nouveau les valeurs des coefficients *)
 tel
 
+
+(* PID controller : proportional–integral–derivative controller
+ * La noeud pid_controller() recoit comme parametre error qui represente le taux d'erreur a l'instant courant.
+ * De plus, ce noeud recoit les coefficients requis pour le calcul du pid *)
+node pid_controller(after_turn : bool; actual_speed, error : float) returns (y : float)
+var pre_error : float; 
+    kp, ki, kd : float;
+let
+  () = dbg_pid("\n", kp, ki, kd);
+  pre_error = 0.0 fby error;
+  (kp, ki, kd) =  set_kp_ki_kd(after_turn, actual_speed, error);
+
+  y =   kp *. error +.  ki *. Utilities.integrator(error, dt, pre_error) +. kd *. Utilities.derivative(error, dt);
+tel
+
 (* **************************************** SPEED **************************************** *)
+node get_actual_speed(sens : sensors ; iti : itielt) returns (actual_speed : float)
+let
+  actual_speed =  if sens.s_front.red = 255 and sens.s_road.red = 255 and sens.s_road.blue = 0 or sens.s_sonar < 80 
+                    then 0.0
+                  else 
+                    if iti.act = Go 
+                      then iti.param *. 360.0 *. Globals.cD /. 100.0 
+                    else (0.0 fby actual_speed);
+tel
 
 fun speed_pid(pid, actual_speed : float) returns (speed : float)
 let
@@ -178,23 +191,19 @@ tel
 
 node controller(sens : sensors; iti : itielts) returns (rspeed : wheels; arriving : bool)
 var last i : int=0; last action : action = Go; last t : int; last last_sen: color = { red = 128; green = 128; blue = 128 };
-    actual_speed, error, pre_error, pid, kp, ki, kd : float; last last_speed : float = 0.0; 
+    actual_speed, error, pid : float; last last_speed : float = 0.0; 
     last after_turn : bool = false; 
   let
   () = Trace.trace_float("error", error); 
   error = get_error(sens.s_road);
   
-  actual_speed =   if sens.s_front.red = 255 and sens.s_road.red = 255 and sens.s_road.blue = 0 or sens.s_sonar < 80 then 0.0
-                   else if (iti[>i<]).act = Go then (iti[>i<]).param *. 360.0 *. Globals.cD /. 100.0 else (0.0 fby actual_speed);
+  actual_speed =  get_actual_speed(sens, iti[>i<]);
                    
-  (kp, ki, kd) =  set_kp_ki_kd(true -> after_turn, actual_speed, error);
-  pid = pid_controller(pre_error, error, kp, ki, kd); 
-  pre_error = 0.0 fby error;
+  pid = pid_controller(true -> after_turn, actual_speed, error); 
   last_sen = sens.s_road;
   last_speed = (iti[>i<]).param;
 
-  (* () = dbg_itielt("iti[i] = ", iti[>i<]); *)
-  () = dbg_pid("\n", kp, ki, kd);
+  () = dbg_itielt("\n iti[i] = ", iti[>i<]);
 
   automaton
     state Go
