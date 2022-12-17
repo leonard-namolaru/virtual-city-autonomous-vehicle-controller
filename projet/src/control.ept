@@ -68,27 +68,33 @@ node set_kp_ki_kd(after_turn : bool; max_speed, error : float) returns (kp, ki, 
 var ki_determined, kd_determined : bool;
     pre_ki, pre_kd, pre_pre_ki, pre_pre_kd : float;
 let
+  kp = max_speed;
+
   reset 
-    kp = 0.0 -> max_speed;
-    
-    kd = 0.0 -> if (not kd_determined and error = 0.0) (* Si la valeur de kd n'a pas encore ete determinee et tant que l'augmentation de kd n'entraine pas d'erreurs *)
+    (* Si la valeur de kd n'a pas encore ete determinee et tant que l'augmentation de kd n'entraine pas d'erreurs *)
+    kd = 0.0 -> if (not kd_determined and error = 0.0) 
                     then (pre kd) +. 1.0 
                 else (* Si la valeur de kd a deja ete determinee mais que kd est inferieur a 14, nous fixons la valeur a 14 *)
                     Utilities.max_float(14.0, pre kd);
 
-    ki = 0.0 -> if (not ki_determined and kd_determined and (error = 0.0)) or (kd_determined <> false fby kd_determined) 
+    (* Si ki n'a pas encore ete determine et que kd a ete determine et tant que l'augmentation de ki ne conduit pas a des erreurs *)
+    ki = 0.0 -> if (not ki_determined and kd_determined and (error = 0.0)) 
+                 or (kd_determined <> false fby kd_determined) (* Ou alternativement - si la valeur de kd vient d'etre determiee, on essaiera d'augmenter ki malgre tout  *)
                     then (pre ki) +. 1.0 
                 else 
                     (pre ki);
 
-    pre_ki = 0.0 fby ki;
-    pre_kd = 0.0 fby kd;
+    (* Nous initialisons pre_kd et pre_pre_kd avec des valeurs differentes car si nous avions initialise les deux avec la meme valeur, 
+     * alors au debut pre_kd serait egal a pre_pre_kd, ce qui aurait conduit a ce que la valeur de kd_determined soit true. *)
+    pre_ki = -.1.0 fby ki;
+    pre_kd = -.1.0 fby kd;
 
     pre_pre_ki = 1.0 fby pre_ki;
     pre_pre_kd = 1.0 fby pre_kd;
 
-    ki_determined = false -> if pre_ki = pre_pre_ki and error <> 0.0 then true else (pre ki_determined);
-    kd_determined = false -> if pre_kd = pre_pre_kd and error <> 0.0 then true else (pre kd_determined);
+    (* Nous comparons la valeur precedente a la valeur qui a precede la valeur precedente et non a la valeur actuelle afin de ne pas creer d'erreur de causalite *)
+    ki_determined = false -> if pre_ki = pre_pre_ki then true else (pre ki_determined);
+    kd_determined = false -> if pre_kd = pre_pre_kd then true else (pre kd_determined);
   every after_turn; (* Apres chaque virage, nous determinons a nouveau les valeurs des coefficients *)
 tel
 
@@ -139,9 +145,6 @@ var last i : int=0; last action : action = Go; last t : int; last last_sen: colo
     actual_speed, in_red, in_green, error, pre_error, pid, kp, ki, kd : float; last last_speed : float = 0.0; 
     last after_turn : bool = false; 
   let
-  () = Trace.trace_int("red", sens.s_road.red);
-  () = Trace.trace_int("blue", sens.s_road.blue);
-  () = Trace.trace_int("green", sens.s_road.green);
 
   in_red =  Mathext.float(sens.s_road.red) /. 255.0;
   in_green =  Mathext.float(sens.s_road.green) /. 255.0;
@@ -157,7 +160,8 @@ var last i : int=0; last action : action = Go; last t : int; last last_sen: colo
   last_sen = sens.s_road;
   last_speed = (iti[>i<]).param;
 
-  () = dbg_itielt("iti[i] = ", iti[>i<]);
+  (* () = dbg_itielt("iti[i] = ", iti[>i<]); *)
+  () = dbg_pid("\n", kp, ki, kd);
 
   automaton
     state Go
