@@ -45,6 +45,13 @@ let
   w7 = Debug.d_string(w6, "\n");
 tel
 
+
+node trace_red_sensors(sensor_road_red, sensor_front_red : int) returns ()
+let
+    () = Trace.trace_int("sens.s_road.red", sensor_road_red); 
+    () = Trace.trace_int("sens.s_front.red", sensor_front_red); 
+tel
+
 (* ****************************************  **************************************** *)
 fun is_green_line_on_road(sensor_road : color) returns (result : bool)
 let
@@ -203,7 +210,8 @@ var pre_iti_param, actual_speed, error, pid : float;
     pre_s_road_green : int ; last time_required_to_turn : int ; last i : int = 0;
     last after_turn : bool = false; 
   let
-    () = Trace.trace_float("error", error); 
+    () = trace_red_sensors(sens.s_road.red, sens.s_front.red);
+
     () = dbg_itielt("\n iti[i] = ", iti[>i<]);
 
     error = get_error(sens.s_road); 
