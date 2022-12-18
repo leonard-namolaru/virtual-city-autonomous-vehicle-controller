@@ -45,7 +45,7 @@ let
   w7 = Debug.d_string(w6, "\n");
 tel
 
-(* Efficace pour verifier si la voiture s'arrete aux feux rouges *)
+(* trace_red_sensors() : efficace pour verifier si la voiture s'arrete aux feux rouges *)
 (* Pour que le graphique s'affiche, il faut mettre un commentaire la ligne 137 du fichier city.ept. 
  * Il s'agit de la ligne suivante : () = Trace.trace_int("sonar", sonar);
  *
@@ -161,8 +161,7 @@ tel
 
 
 (* PID controller : proportional–integral–derivative controller
- * La noeud pid_controller() recoit comme parametre error qui represente le taux d'erreur a l'instant courant.
- * De plus, ce noeud recoit les coefficients requis pour le calcul du pid *)
+ * La noeud pid_controller() recoit comme parametre error qui represente le taux d'erreur a l'instant courant. *)
 node pid_controller(after_turn : bool; actual_speed, error : float) returns (y : float)
 var pre_error : float; 
     kp, ki, kd : float;
@@ -213,7 +212,7 @@ var pre_iti_param, actual_speed, error, pid : float;
     pre_s_road_green : int ; last time_required_to_turn : int ; last i : int = 0;
     last after_turn : bool = false; 
   let
-    (* () = trace_red_sensors(sens.s_road.red, sens.s_front.red); *)
+    () = trace_red_sensors(sens.s_road.red, sens.s_front.red);
     (* () = dbg_itielt("\n iti[i] = ", iti[>i<]); *)
 
     error = get_error(sens.s_road); 
@@ -228,6 +227,7 @@ var pre_iti_param, actual_speed, error, pid : float;
     state Go
       var distance_to_right_axis_after_turn : float;
       do
+        (* Si les capturers ne captent qu'une ligne verte et si a l'instant precedent nous n'etions pas encore dans cette situation *)
         i = if (is_green_line_on_road(sens.s_road) and pre_s_road_green < 255) then (last i) + 1 else last i;
         rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed, 0);
         after_turn = false;
@@ -244,7 +244,7 @@ var pre_iti_param, actual_speed, error, pid : float;
         rspeed =  get_rspeed(iti[>i<], error, pid, actual_speed, time_required_to_turn);
         after_turn = true;
 
-        (* Un compteur initialise dans GO. Represente  le nombre d'instants dont la voiture a besoin pour tourner *)
+        (* Un compteur initialise dans GO. Represente le nombre d'instants dont la voiture a besoin pour tourner *)
         time_required_to_turn = last time_required_to_turn - 1;
       until (iti[>i<]).act = Go then Go
   end;
