@@ -212,7 +212,7 @@ var pre_iti_param, actual_speed, error, pid : float;
     pre_s_road_green : int ; last time_required_to_turn : int ; last i : int = 0;
     last after_turn : bool = false; 
   let
-    () = trace_red_sensors(sens.s_road.red, sens.s_front.red);
+    (* () = trace_red_sensors(sens.s_road.red, sens.s_front.red); *)
     (* () = dbg_itielt("\n iti[i] = ", iti[>i<]); *)
 
     error = get_error(sens.s_road); 
