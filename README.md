@@ -1,5 +1,5 @@
 ### Programmation embarquée (Heptagon) - Contrôler un véhicule autonome dans une ville virtuelle
-![prog-sync-img.png](prog-sync-img.png.png)
+![prog-sync-img.png](prog-sync-img.png)
 > :school: **Lieu de formation :** Université Paris Cité, Campus Grands Moulins (ex-Paris Diderot)
 > 
 > :books: **UE :** Programmation Synchrone 
