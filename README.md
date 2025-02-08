@@ -1,62 +1,26 @@
-# Programmation Synchrone 2022-2023 (M2 Info & EIDD)
+### Programmation embarquée (Heptagon) - Contrôler un véhicule autonome dans une ville virtuelle
+![prog-sync-img.png](prog-sync-img.png.png)
+> :school: **Lieu de formation :** Université Paris Cité, Campus Grands Moulins (ex-Paris Diderot)
+> 
+> :books: **UE :** Programmation Synchrone 
+> 
+> :pushpin: **Année scolaire :** M2
+> 
+> :calendar: **Dates :** Novembre - décembre 2022 
+> 
+> :chart_with_upwards_trend: **Note :** ~16/20
 
-## Présentation
+#### Description
+Un programme synchrone contrôlant un dispositif physique simplifie mais non trivial : un véhicule autonome dans une ville virtuelle en deux dimensions. 
+Le but est donc de franchir toutes les étapes d’un parcours préétabli tout en respectant un certain nombre de contraintes 
+(limitations de vitesse, feux rouges, évitement des obstacles). Le véhicule est équipé d’actuateurs et de capteurs.
 
-Le [syllabus](cours/syllabus-progsync.pdf) (résumé) du module est disponible.
+_Remarque :_ Heptagon est un langage synchrone universitaire très proche du langage industrielle SCADE 6.
 
-### Contenu et objectifs
+#### Travail effectué
+Compte tenu du dispositif décrit ci-dessus, notre tâche était d’écrire le contrôleur du véhicule de manière à ce qu’il utilise les entrées reçues par les capteurs afin de permettre à la voiture de parcourir l’itinéraire prédéfini de manière autonome. Notre implémentation est principalement basée sur un correcteur PID. 
 
-Le module de *Programmation synchrone* propose une introduction à la
-programmation des **systèmes réactifs** par le biais de langages spécialisés,
-les **langages synchrones**.
+Le code du contrôleur se trouve sur ce GitHub, accompagné d’un rapport expliquant l’implémentation.
 
-- Les **systèmes réactifs** sont des systèmes informatiques en interaction
-  continue avec un environnement extérieur. Le pilote automatique d'un avion
-  moderne (_fly-by-wire_), le contrôleur d'une machine à laver, ou le logiciel
-  de commande d'un ascenseur constituent des exemples de systèmes réactifs.
-
-- Les **langages synchrones** sont des langages spécialement conçus pour la
-  programmation des systèmes réactifs. Ils offrent une expressivité élevée tout
-  en garantissant statiquement certaines propriétés de sûreté. Leur usage est
-  désormais routinier dans les tâches conception et de développement dans
-  certains secteurs industriels, comme l'avionique ou le ferroviaire.
-
-L'enseignement des langages synchrones vise deux objectifs. D'abord, **renforcer
-vos compétences de programmation**, en vous faisant découvrir une famille de
-langages à la fois originaux et utilisés dans l'industrie. Ensuite, **enrichir
-votre culture scientifique**, en illustrant comment les systèmes réactifs
-fournissent un exemple de point de jonction entre l'informatique et d'autres
-disciplines comme l'automatique ou le traitement du signal.
-
-Pour atteindre ces objectifs, on utilisera le langage universitaire
-[*Heptagon*](http://heptagon.gforge.inria.fr), aussi bien durant le cours
-magistral, pour illustrer les principes généraux des langages synchrones, que
-durant les séances de travaux pratiques. Les autres langages synchrones
-(notamment d'origines industrielles) seront aussi régulièrement évoqués durant
-le cours.
-
-## Structuration du cours
-
-Le cours magistral a lieu le *mardi de 11h45 à 13h45*, dans la salle 419C de la
-Halle aux Farines.
-
-Les séances de travaux pratiques ont lieu en salle 2001 du bâtiment Sophie
-Germain, le *mercredi de 10h45 à 12h45* (EIDD) et le *jeudi de 16h45 à 18h45*
-(M2).
-
-## Modalités de contrôle des connaissances
-
-La note du cours sera composée pour 50% de celle du projet et pour 50% de celle
-de l'examen final.
-
-## Organisation de ce dépôt
-
-Ce dépôt contient tout le matériel pédagogique du cours :
-
-- le **support du cours**, dans les sous-répertoire [cours](cours/) et surtout
-  [notes](notes/),
-
-- les **énoncés de TP**, dans le sous-répertoire [TP](tp/),
-
-- l'**énoncé du projet, ainsi que son squelette**, dans le sous-répertoire
-  [projet](projet/) [pas encore disponible].
+#### Ressources supplémentaires
+- [Rapport](Rapport_FR.pdf)

@@ -1,9 +1,0 @@
-scontest
-src/*.c
-src/*.o
-src/*.log
-src/*.mls
-src/*h
-src/*.epci
-src/*.epo
-src/*/
